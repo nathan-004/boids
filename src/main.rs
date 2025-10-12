@@ -18,20 +18,33 @@ impl Boid {
         self.posx += self.speed * s;
         self.posy += self.speed * c;
     }
+
+    fn constrain_position(&mut self, width: f32, height: f32) {
+        if self.posx >= width {
+            self.posx = width;
+            self.direction = -self.direction;
+        } else if self.posx <= -width {
+            self.posx = -width;
+            self.direction = -self.direction;
+        }
+
+        if self.posy >= height {
+            self.posy = height;
+            self.direction = -self.direction;
+        } else if self.posy <= -height {
+            self.posy = -height;
+            self.direction = -self.direction;
+        }
+        
+    }
 }
 
 fn main() {
-    let mut app = App::new();
-    app.add_plugins((
-        DefaultPlugins,
-        #[cfg(not(target_arch = "wasm32"))]
-        Wireframe2dPlugin::default(),
-    ))
-    .add_systems(Startup, setup)
-    .add_systems(Update, update_boids);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    app.run();
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_systems(Startup, setup)
+        .add_systems(Update, update_boids)
+        .run();
 }
 
 fn setup(
@@ -63,10 +76,16 @@ fn setup(
     ));
 }
 
-fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>) {
+fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Query<&Window>) {
+    let window = window_query.single().unwrap();
+    let width = window.resolution.width() / 2.0;
+    let height = window.resolution.height() / 2.0;
+
+
     for (mut transform, mut boid) in &mut query {
         // Mise à jour logique
         boid.update_position();
+        boid.constrain_position(width, height);
 
         // Mise à jour graphique
         transform.translation.x = boid.posx;
