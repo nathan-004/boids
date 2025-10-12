@@ -2,6 +2,9 @@ use bevy::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::sprite_render::{Wireframe2dConfig, Wireframe2dPlugin};
 
+use std::f32::consts::PI;
+
+#[derive(Component)]
 struct Boid {
     posx: f32,
     posy: f32,
@@ -10,19 +13,10 @@ struct Boid {
 }
 
 impl Boid {
-    fn new() -> Self {
-        Boid {
-            posx: 1.0,
-            posy: 1.0,
-            direction: 1.0,
-            speed: 1.0,
-        }
-    }
-
     fn update_position(&mut self) {
         let (s, c) = self.direction.sin_cos(); // sin, cos
-        self.posx += self.speed * c;
-        self.posy += self.speed * s;
+        self.posx += self.speed * s;
+        self.posy += self.speed * c;
     }
 }
 
@@ -33,53 +27,50 @@ fn main() {
         #[cfg(not(target_arch = "wasm32"))]
         Wireframe2dPlugin::default(),
     ))
-    .add_systems(Startup, setup);
+    .add_systems(Startup, setup)
+    .add_systems(Update, update_boids);
+
     #[cfg(not(target_arch = "wasm32"))]
-    //app.add_systems(Update, toggle_wireframe);
     app.run();
 }
-
-const X_EXTENT: f32 = 900.;
 
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    // Caméra 2D
     commands.spawn(Camera2d);
 
-    let shapes = [
-        meshes.add(Triangle2d::new(
-            Vec2::Y * 50.0,
-            Vec2::new(-50.0, -50.0),
-            Vec2::new(50.0, -50.0),
-        )),
-        meshes.add(Triangle2d::new(
-            Vec2::Y * 50.0,
-            Vec2::new(-50.0, -50.0),
-            Vec2::new(50.0, -50.0),
-        ))
-    ];
-    let num_shapes = shapes.len();
+    // Création d'un mesh triangle
+    let triangle = meshes.add(Triangle2d::new(
+        Vec2::Y * 20.0,
+        Vec2::new(-15.0, -15.0),
+        Vec2::new(15.0, -15.0),
+    ));
 
-    for (i, shape) in shapes.into_iter().enumerate() {
-        // Distribute colors evenly across the rainbow.
-        let color = Color::hsl(360. * i as f32 / num_shapes as f32, 0.95, 0.7);
+    // Ajout du boid à l'écran
+    commands.spawn((
+        Boid {
+            posx: 0.0,
+            posy: 0.0,
+            direction: PI / 2.0,
+            speed: 2.0,
+        },
+        Mesh2d(triangle),
+        MeshMaterial2d(materials.add(Color::WHITE)),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
+}
 
-        commands.spawn((
-            Mesh2d(shape),
-            MeshMaterial2d(materials.add(color)),
-            Transform {
-                translation: Vec3::new(
-                    // Position X répartie sur l'écran
-                    -X_EXTENT / 2. + i as f32 / (num_shapes - 1) as f32 * X_EXTENT,
-                    0.0,
-                    0.0,
-                ),
-                rotation: Quat::from_rotation_z(3.14 / 2.0), // Angle en radians
-                scale: Vec3::splat(1.0),
-            },
-        ));
+fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>) {
+    for (mut transform, mut boid) in &mut query {
+        // Mise à jour logique
+        boid.update_position();
 
+        // Mise à jour graphique
+        transform.translation.x = boid.posx;
+        transform.translation.y = boid.posy;
+        transform.rotation = Quat::from_rotation_z(-boid.direction);
     }
 }
