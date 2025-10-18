@@ -1,6 +1,5 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, transform};
 #[cfg(not(target_arch = "wasm32"))]
-use bevy::sprite_render::{Wireframe2dConfig, Wireframe2dPlugin};
 
 use std::f32::consts::PI;
 
@@ -35,7 +34,6 @@ impl Boid {
             self.posy = -height;
             self.direction = -self.direction;
         }
-        
     }
 }
 
@@ -44,6 +42,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(Update, update_boids)
+        .add_systems(Update, keyboard_inputs)
         .run();
 }
 
@@ -67,7 +66,7 @@ fn setup(
         Boid {
             posx: 0.0,
             posy: 0.0,
-            direction: PI / 2.0,
+            direction: PI / 3.0,
             speed: 2.0,
         },
         Mesh2d(triangle),
@@ -91,5 +90,42 @@ fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Que
         transform.translation.x = boid.posx;
         transform.translation.y = boid.posy;
         transform.rotation = Quat::from_rotation_z(-boid.direction);
+    }
+}
+
+fn keyboard_inputs(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
+    mut query: Query<&mut Boid>,
+) {
+    let turn_speed = 3.0; // radians par seconde
+    let accel = 50.0;     // unités de vitesse par seconde
+
+    let mut turn_delta = 0.0;
+    if keyboard_input.pressed(KeyCode::ArrowLeft) {
+        turn_delta += turn_speed * time.delta_secs();
+    }
+    if keyboard_input.pressed(KeyCode::ArrowRight) {
+        turn_delta -= turn_speed * time.delta_secs();
+    }
+
+    let mut speed_delta = 0.0;
+    if keyboard_input.pressed(KeyCode::ArrowUp) {
+        speed_delta += accel * time.delta_secs();
+    }
+    if keyboard_input.pressed(KeyCode::ArrowDown) {
+        speed_delta -= accel * time.delta_secs();
+    }
+
+    if turn_delta == 0.0 && speed_delta == 0.0 {
+        return;
+    }
+
+    for mut boid in &mut query {
+        boid.direction += turn_delta;
+        boid.speed = (boid.speed + speed_delta).max(0.0); // pas de vitesse négative
+
+        // normaliser l'angle dans [-PI, PI] pour éviter débordements
+        boid.direction = (boid.direction + PI).rem_euclid(2.0 * PI) - PI;
     }
 }
