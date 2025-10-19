@@ -19,21 +19,28 @@ impl Boid {
     }
 
     fn constrain_position(&mut self, width: f32, height: f32) {
+        let (s, c) = self.direction.sin_cos();
+        let mut cur_vy:f32 = self.speed * c;
+        let mut cur_vx:f32 = self.speed * s;
+
         if self.posx >= width {
             self.posx = width;
-            self.direction = -self.direction;
+            cur_vx = -cur_vx;
         } else if self.posx <= -width {
             self.posx = -width;
-            self.direction = -self.direction;
+            cur_vx = -cur_vx;
         }
 
         if self.posy >= height {
             self.posy = height;
-            self.direction = -self.direction;
+            cur_vy = -cur_vy;
         } else if self.posy <= -height {
             self.posy = -height;
-            self.direction = -self.direction;
+            cur_vy = -cur_vy;
         }
+
+        self.direction = cur_vx.atan2(cur_vy);
+        self.direction = (self.direction + PI).rem_euclid(2.0 * PI) - PI;
     }
 }
 
