@@ -1,7 +1,8 @@
-use bevy::{prelude::*, transform};
+use bevy::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 
 use std::f32::consts::PI;
+use rand::Rng;
 
 #[derive(Component)]
 struct Boid {
@@ -60,26 +61,29 @@ fn setup(
 ) {
     // Caméra 2D
     commands.spawn(Camera2d);
+    let mut rng = rand::rng();
+    
+    for _ in 0..5 {
+        // Création d'un mesh triangle
+        let triangle = meshes.add(Triangle2d::new(
+            Vec2::Y * 20.0,
+            Vec2::new(-15.0, -15.0),
+            Vec2::new(15.0, -15.0),
+        ));
 
-    // Création d'un mesh triangle
-    let triangle = meshes.add(Triangle2d::new(
-        Vec2::Y * 20.0,
-        Vec2::new(-15.0, -15.0),
-        Vec2::new(15.0, -15.0),
-    ));
-
-    // Ajout du boid à l'écran
-    commands.spawn((
-        Boid {
-            posx: 0.0,
-            posy: 0.0,
-            direction: PI / 3.0,
-            speed: 2.0,
-        },
-        Mesh2d(triangle),
-        MeshMaterial2d(materials.add(Color::WHITE)),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-    ));
+        // Ajout du boid à l'écran
+        commands.spawn((
+            Boid {
+                posx: 0.0,
+                posy: 0.0,
+                direction: rng.random_range(-1.0..1.0),
+                speed: 2.0,
+            },
+            Mesh2d(triangle),
+            MeshMaterial2d(materials.add(Color::WHITE)),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+        ));
+    }
 }
 
 fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Query<&Window>) {
