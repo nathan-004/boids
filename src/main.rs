@@ -17,6 +17,8 @@ impl Boid {
         let (s, c) = self.direction.sin_cos(); // sin, cos
         self.posx += self.speed * s;
         self.posy += self.speed * c;
+        let mut rng = rand::rng();
+        self.direction += rng.random_range(-0.05..0.05);
     }
 
     fn constrain_position(&mut self, width: f32, height: f32) {
