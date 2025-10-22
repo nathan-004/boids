@@ -18,7 +18,7 @@ impl Boid {
         self.posx += self.speed * s;
         self.posy += self.speed * c;
         let mut rng = rand::rng();
-        self.direction += rng.random_range(-0.05..0.05);
+        self.direction += rng.random_range(-0.02..0.02);
     }
 
     fn constrain_position(&mut self, width: f32, height: f32) {
@@ -65,7 +65,7 @@ fn setup(
     commands.spawn(Camera2d);
     let mut rng = rand::rng();
     
-    for _ in 0..5 {
+    for _ in 0..10 {
         // Création d'un mesh triangle
         let triangle = meshes.add(Triangle2d::new(
             Vec2::Y * 20.0,
@@ -79,7 +79,7 @@ fn setup(
                 posx: 0.0,
                 posy: 0.0,
                 direction: rng.random_range(-1.0..1.0),
-                speed: 2.0,
+                speed: 3.0,
             },
             Mesh2d(triangle),
             MeshMaterial2d(materials.add(Color::WHITE)),
@@ -104,6 +104,32 @@ fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Que
         transform.translation.y = boid.posy;
         transform.rotation = Quat::from_rotation_z(-boid.direction);
     }
+
+    // Première passe : collecter les positions
+    let positions: Vec<(f32, f32)> = query.iter()
+        .map(|(_transform, boid)| (boid.posx, boid.posy))
+        .collect();
+
+    // Deuxième passe : modifier les boids
+    for (i, (_transform_i, mut boid_i)) in query.iter_mut().enumerate() {
+        let mut close_dx = 0.0;
+        let mut close_dy = 0.0;
+
+        for (j, (pos_x, pos_y)) in positions.iter().enumerate() {
+            if i != j {  // Ne pas comparer avec soi-même
+                if ((boid_i.posx - pos_x).powi(2) + (boid_i.posy - pos_y).powi(2)).sqrt() > 50.0 {
+                    continue;
+                }
+                close_dx += pos_x - boid_i.posx;
+                close_dy += pos_y - boid_i.posy;
+            }
+        }
+
+        if close_dx != 0.0 || close_dy != 0.0 {
+            boid_i.direction += close_dy.atan2(close_dx) * 0.01;
+        }
+    }
+
 }
 
 fn keyboard_inputs(
