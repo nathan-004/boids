@@ -65,7 +65,7 @@ fn setup(
     commands.spawn(Camera2d);
     let mut rng = rand::rng();
     
-    for _ in 0..10 {
+    for _ in 0..100 {
         // Création d'un mesh triangle
         let triangle = meshes.add(Triangle2d::new(
             Vec2::Y * 20.0,
@@ -78,7 +78,7 @@ fn setup(
             Boid {
                 posx: 0.0,
                 posy: 0.0,
-                direction: rng.random_range(-1.0..1.0),
+                direction: rng.random_range(-PI..PI),
                 speed: 3.0,
             },
             Mesh2d(triangle),
@@ -110,14 +110,23 @@ fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Que
         .map(|(_transform, boid)| (boid.posx, boid.posy))
         .collect();
 
-    // Deuxième passe : modifier les boids
     for (i, (_transform_i, mut boid_i)) in query.iter_mut().enumerate() {
         let mut close_dx = 0.0;
         let mut close_dy = 0.0;
 
+        let mut xpos_avg: f32 = 0.0;
+        let mut ypos_avg: f32 = 0.0;
+        let mut neighoring_boids:f32 = 0.0;
+
         for (j, (pos_x, pos_y)) in positions.iter().enumerate() {
             if i != j {  // Ne pas comparer avec soi-même
-                if ((boid_i.posx - pos_x).powi(2) + (boid_i.posy - pos_y).powi(2)).sqrt() > 50.0 {
+                let distance: f32 = ((boid_i.posx - pos_x).powi(2) + (boid_i.posy - pos_y).powi(2)).sqrt();
+                if distance > 50.0 {
+                    if distance < 100.0 {
+                        xpos_avg += pos_x;
+                        ypos_avg += pos_y;
+                        neighoring_boids += 1.0;
+                    }
                     continue;
                 }
                 close_dx += pos_x - boid_i.posx;
@@ -126,7 +135,24 @@ fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Que
         }
 
         if close_dx != 0.0 || close_dy != 0.0 {
-            boid_i.direction += close_dy.atan2(close_dx) * 0.01;
+            boid_i.direction += close_dy.atan2(close_dx) * 0.05;
+        }
+
+        if neighoring_boids > 0.0 {
+            xpos_avg /= neighoring_boids;
+            ypos_avg /= neighoring_boids;
+
+            let desired_angle = (ypos_avg - boid_i.posy).atan2(xpos_avg - boid_i.posx);
+
+            let mut angle_diff = desired_angle - boid_i.direction;
+
+            if angle_diff > PI {
+                angle_diff -= 2.0 * PI;
+            } else if angle_diff < -PI {
+                angle_diff += 2.0 * PI;
+            }
+
+            boid_i.direction += angle_diff * 0.01;
         }
     }
 
