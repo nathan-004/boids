@@ -93,7 +93,6 @@ fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Que
     let width = window.resolution.width() / 2.0;
     let height = window.resolution.height() / 2.0;
 
-
     for (mut transform, mut boid) in &mut query {
         // Mise à jour logique
         boid.update_position();
@@ -121,21 +120,29 @@ fn update_boids(mut query: Query<(&mut Transform, &mut Boid)>, window_query: Que
         for (j, (pos_x, pos_y)) in positions.iter().enumerate() {
             if i != j {  // Ne pas comparer avec soi-même
                 let distance: f32 = ((boid_i.posx - pos_x).powi(2) + (boid_i.posy - pos_y).powi(2)).sqrt();
-                if distance > 50.0 {
-                    if distance < 100.0 {
-                        xpos_avg += pos_x;
-                        ypos_avg += pos_y;
-                        neighoring_boids += 1.0;
-                    }
+                let dx = pos_x - boid_i.posx;
+                let dy = pos_y - boid_i.posy;      
+                if distance < 50.0 {
+                    close_dx += dx;
+                    close_dy += dy;
                     continue;
                 }
-                close_dx += pos_x - boid_i.posx;
-                close_dy += pos_y - boid_i.posy;
+
+                if distance < 150.0 {
+                    let mut weight = 1.0;
+                    if distance > 100.0 {
+                        weight = (150.0 - distance) / 50.0;
+                    }
+
+                    xpos_avg += pos_x * weight;
+                    ypos_avg += pos_y * weight;
+                    neighoring_boids += weight;
+                }
             }
         }
 
         if close_dx != 0.0 || close_dy != 0.0 {
-            boid_i.direction += close_dy.atan2(close_dx) * 0.05;
+            boid_i.direction += close_dy.atan2(close_dx) * 0.01;
         }
 
         if neighoring_boids > 0.0 {
